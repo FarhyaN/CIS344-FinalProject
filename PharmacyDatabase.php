@@ -19,7 +19,8 @@ class PharmacyDatabase {
         echo "Successfully connected to the database";
     }
 
-    public function addPrescription($patientUserName, $medicationId, $dosageInstructions, $quantity)  {
+    // Add prescription for a patient
+    public function addPrescription($patientUserName, $medicationId, $dosageInstructions, $quantity) {
         $stmt = $this->connection->prepare(
             "SELECT userId FROM Users WHERE userName = ? AND userType = 'patient'"
         );
@@ -29,95 +30,95 @@ class PharmacyDatabase {
         $stmt->fetch();
         $stmt->close();
         
-        if ($patientId){
+        if ($patientId) {
             $stmt = $this->connection->prepare(
-                "INSERT INTO prescriptions (userId, medicationId, dosageInstructions, quantity) VALUES (?, ?, ?, ?)"
+                "INSERT INTO prescriptions (userId, medicationId, dosageInstructions, quantity, prescribedDate) 
+                 VALUES (?, ?, ?, ?, NOW())"
             );
             $stmt->bind_param("iisi", $patientId, $medicationId, $dosageInstructions, $quantity);
             $stmt->execute();
             $stmt->close();
             echo "Prescription added successfully";
-        }else{
-            echo "failed to add prescription";
+        } else {
+            echo "Failed to add prescription: patient not found";
         }
     }
 
+    // Get all prescriptions with medication info
     public function getAllPrescriptions() {
-        $result = $this->connection->query("SELECT * FROM  prescriptions join medications on prescriptions.medicationId= medications.medicationId");
-        return $result->fetch_all(MYSQLI_ASSOC);
-    }
-    
-    public function MedicationInventory() {
-        /*
-        Complete this function to test the functionality of
-        MedicationInventoryView and implement it in the server
-        */
-        //Write code here
-            $result = $this->connection->query(
-                "SELECT medications.medicationName, medications.dosage, medications.manufacturer, inventory.quantityAvailable
-                 FROM medications
-                 JOIN inventory ON medications.medicationId = inventory.medicationId"
-            );
-            return $result->fetch_all(MYSQLI_ASSOC);
-        }
-    }
-
-    /*public function addUser($userName, $contactInfo, $userType) {
-     //Write Code here
-        $stmt = $this->connection->prepare(
-            "INSERT INTO Users (userName, contactInfo, userType) VALUES (?, ?, ?)"
+        $result = $this->connection->query(
+            "SELECT * FROM prescriptions 
+             JOIN medications ON prescriptions.medicationId = medications.medicationId"
         );
-        $stmt->bind_param("sss", $userName, $contactInfo, $userType);
-        $stmt->execute();
-        $stmt->close();
-        echo "User added successfully.";
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-    }*/
 
+    // Fetch data from MedicationInventoryView
+    public function MedicationInventory() {
+        $result = $this->connection->query("SELECT * FROM MedicationInventoryView");
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    // Add user if not exists
     public function addUser($userName, $contactInfo, $userType) {
-        // first check if user exists
-        $stmt = $this->connection->prepare("select userId from users where userName = ?");
+        $stmt = $this->connection->prepare("SELECT userId FROM Users WHERE userName = ?");
         $stmt->bind_param("s", $userName);
         $stmt->execute();
         $stmt->store_result();
-    
+        
         if ($stmt->num_rows > 0) {
             echo "User already exists.";
-            $stmt->close();
-            return;
-        }
-    
-        $stmt->close();
-    
-        // insert new user
-        $stmt = $this->connection->prepare("insert into users (userName, contactInfo, userType) values (?, ?, ?)");
-        $stmt->bind_param("sss", $userName, $contactInfo, $userType);
-    
-        if ($stmt->execute()) {
-            echo "User added successfully.";
         } else {
-            echo "Error adding user: " . $stmt->error;
+            $stmt->close();
+            $stmt = $this->connection->prepare(
+                "INSERT INTO Users (userName, contactInfo, userType) VALUES (?, ?, ?)"
+            );
+            $stmt->bind_param("sss", $userName, $contactInfo, $userType);
+            if ($stmt->execute()) {
+                echo "User added successfully.";
+            } else {
+                echo "Failed to add user.";
+            }
         }
-    
         $stmt->close();
     }
+
+    // Add a new medication
     public function addMedication($medicationName, $dosage, $manufacturer) {
         $stmt = $this->connection->prepare(
-            "INSERT INTO medications (medicationName, dosage, manufacturer) VALUES (?, ?, ?)"
+            "INSERT INTO Medications (medicationName, dosage, manufacturer) VALUES (?, ?, ?)"
         );
-    
         $stmt->bind_param("sss", $medicationName, $dosage, $manufacturer);
-    
+
         if ($stmt->execute()) {
             echo "Medication added successfully.";
         } else {
-            echo "Error adding medication: " . $stmt->error;
+            echo "Failed to add medication.";
         }
-    
         $stmt->close();
     }
-    
 
-    //Add Other needed functions here
+    // Get user details and associated prescriptions
+    public function getUserDetails($userId) {
+        $stmt = $this->connection->prepare(
+            "SELECT 
+                u.userId, u.userName, u.contactInfo, u.userType,
+                p.prescriptionId, p.medicationId, p.prescribedDate,
+                p.dosageInstructions, p.quantity, p.refillCount,
+                m.medicationName, m.dosage AS medDosage, m.manufacturer
+            FROM 
+                Users u
+            LEFT JOIN 
+                Prescriptions p ON u.userId = p.userId
+            LEFT JOIN 
+                Medications m ON p.medicationId = m.medicationId
+            WHERE 
+                u.userId = ?"
+        );
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
 }
 ?>

@@ -26,12 +26,6 @@ class PharmacyPortal {
                 break;
             default:
                 $this->home();
-            case 'addUser':
-                $this->addUser();
-                break;
-            case 'viewInventory':
-                $this->viewInventory();
-                break;
         }
     }
 
@@ -48,6 +42,7 @@ class PharmacyPortal {
 
             $this->db->addPrescription($patientUserName, $medicationId, $dosageInstructions, $quantity);
             header("Location:?action=viewPrescriptions&message=Prescription Added");
+            exit;
         } else {
             include 'templates/addPrescription.php';
         }
@@ -57,20 +52,24 @@ class PharmacyPortal {
         $prescriptions = $this->db->getAllPrescriptions();
         include 'templates/viewPrescriptions.php';
     }
+
+    private function viewInventory() {
+        $inventory = $this->db->MedicationInventory();
+        include 'templates/viewInventory.php';
+    }
+
     private function addUser() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userName = $_POST['user_name'];
             $contactInfo = $_POST['contact_info'];
             $userType = $_POST['user_type'];
+
             $this->db->addUser($userName, $contactInfo, $userType);
-            header("Location: PharmacyServer.php?message=User+Added");
+            header("Location:?action=home&message=User Added");
+            exit;
         } else {
             include 'templates/addUser.php';
         }
-    }
-    private function viewInventory() {
-        $inventory = $this->db->MedicationInventory();
-        include 'templates/viewInventory.php';
     }
 }
 

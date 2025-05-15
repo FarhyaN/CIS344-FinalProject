@@ -27,7 +27,7 @@
         }
 
         th {
-            background-color: #007bff;
+            background-color:rgb(6, 81, 27);
             color: white;
         }
 
@@ -36,7 +36,7 @@
         }
 
         a {
-            color: #007bff;
+            color:rgb(6, 81, 27);
             text-decoration: none;
             transition: color 0.3s;
         }
